@@ -7,8 +7,6 @@ type Mahasiswa struct {
 	NIM            string    `gorm:"unique;not null" json:"nim" validate:"required,min=8,max=20"`
 	Nama           string    `gorm:"type:varchar(100);not null" json:"nama" validate:"required,min=2,max=100"`
 	Jurusan        string    `gorm:"type:varchar(100)" json:"jurusan" validate:"required,min=2,max=100"`
-	Password       string    `gorm:"type:varchar(255);not null" json:"-" validate:"required,min=6"`
-	Role           string    `gorm:"type:varchar(20);default:'mahasiswa'" json:"role"`
 	StatusAkademik string    `gorm:"type:varchar(20);default:'aktif'" json:"status_akademik"`
 	Semester       int       `gorm:"default:1" json:"semester"`
 	IPK            float64   `gorm:"type:decimal(3,2);default:0.00" json:"ipk"`
@@ -23,10 +21,9 @@ type Mahasiswa struct {
 
 // MahasiswaRequest untuk input validation
 type MahasiswaRequest struct {
-	NIM      string `json:"nim" validate:"required,min=8,max=20"`
-	Nama     string `json:"nama" validate:"required,min=2,max=100"`
-	Jurusan  string `json:"jurusan" validate:"required,min=2,max=100"`
-	Password string `json:"password" validate:"required,min=6"`
+	NIM     string `json:"nim" validate:"required,min=8,max=20"`
+	Nama    string `json:"nama" validate:"required,min=2,max=100"`
+	Jurusan string `json:"jurusan" validate:"required,min=2,max=100"`
 }
 
 // MahasiswaResponse untuk output (tanpa password)
@@ -40,8 +37,4 @@ type MahasiswaResponse struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// LoginRequest untuk login
-type LoginRequest struct {
-	NIM      string `json:"nim" validate:"required"`
-	Password string `json:"password" validate:"required"`
-}
+// LoginRequest sudah tidak diperlukan, gunakan UserLoginRequest di users.go

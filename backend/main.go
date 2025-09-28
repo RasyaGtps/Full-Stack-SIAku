@@ -21,8 +21,14 @@ func main() {
 		log.Fatalf("Database connection failed: %v", err)
 	}
 
-	if err := db.AutoMigrate(&models.Mahasiswa{}, &models.Course{}, &models.KRS{}, &models.Nilai{}, &models.Jadwal{}, &models.Dosen{}, &models.Absensi{}, &models.Materi{}); err != nil {
+	// Old migration
+	if err := db.AutoMigrate(&models.Mahasiswa{}, &models.Course{}, &models.KRS{}, &models.Nilai{}, &models.Jadwal{}, &models.Dosen{}, &models.Absensi{}, &models.Materi{}, &models.Kajur{}, &models.Rektor{}); err != nil {
 		log.Fatalf("Migration failed: %v", err)
+	}
+
+	// Users table migration
+	if err := db.AutoMigrate(&models.Users{}); err != nil {
+		log.Fatalf("Users table migration failed: %v", err)
 	}
 
 	if os.Getenv("GIN_MODE") == "" {
@@ -35,6 +41,7 @@ func main() {
 	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS())
 
+	// Setup routes
 	routes.SetupRoutes(r)
 
 	port := config.AppConfig.ServerPort

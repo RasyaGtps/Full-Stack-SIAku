@@ -17,6 +17,8 @@ func SetupRoutes(r *gin.Engine) {
 	dosenController := controllers.NewDosenController()
 	absensiController := controllers.NewAbsensiController()
 	materiController := controllers.NewMateriController()
+	kajurController := controllers.NewKajurController()
+	rektorController := controllers.NewRektorController()
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -28,6 +30,7 @@ func SetupRoutes(r *gin.Engine) {
 	{
 		auth := api.Group("/auth")
 		{
+			// Universal registration and login for all roles
 			auth.POST("/register", authController.Register)
 			auth.POST("/login", authController.Login)
 		}
@@ -110,6 +113,49 @@ func SetupRoutes(r *gin.Engine) {
 				materi.GET("/courses/:courseId", materiController.GetMateriByCourse)
 				materi.PUT("/:materiId", materiController.UpdateMateri)
 				materi.DELETE("/:materiId", materiController.DeleteMateri)
+			}
+
+			// Kajur endpoints
+			kajur := protected.Group("/kajur")
+			{
+				// Dashboard dan overview
+				kajur.GET("/dashboard", kajurController.GetDashboard)
+
+				// Management mahasiswa
+				kajur.GET("/mahasiswa", kajurController.GetMahasiswaDiJurusan)
+
+				// Management dosen
+				kajur.GET("/dosen", kajurController.GetDosenDiJurusan)
+				kajur.GET("/dosen/monitoring", kajurController.GetMonitoringDosenPerformance)
+
+				// KRS validation
+				kajur.GET("/krs/pending", kajurController.GetPendingKRSValidation)
+				kajur.PUT("/krs/:krsId/validation", kajurController.ProcessKRSValidation)
+
+				// Laporan jurusan
+				kajur.GET("/laporan", kajurController.GenerateLaporanJurusan)
+
+				// Management mata kuliah
+				kajur.GET("/mata-kuliah", kajurController.GetMataKuliahDiJurusan)
+				kajur.PUT("/mata-kuliah/:courseId/status", kajurController.UpdateStatusMataKuliah)
+			}
+
+			// Rektor endpoints
+			rektor := protected.Group("/rektor")
+			{
+				// University dashboard
+				rektor.GET("/dashboard", rektorController.GetUniversityDashboard)
+
+				// Faculty reports
+				rektor.GET("/faculty/:faculty/report", rektorController.GetFacultyReport)
+
+				// Role management
+				rektor.POST("/assign-role", rektorController.AssignRole)
+				rektor.GET("/role-assignments", rektorController.GetRoleAssignments)
+
+				// Policy approval
+				rektor.GET("/policies/pending", rektorController.GetPendingPolicies)
+				rektor.PUT("/policies/:id/approval", rektorController.ApprovePolicy)
 			}
 		}
 	}
