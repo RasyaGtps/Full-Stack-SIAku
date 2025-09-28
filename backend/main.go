@@ -21,7 +21,7 @@ func main() {
 		log.Fatalf("Database connection failed: %v", err)
 	}
 
-	if err := db.AutoMigrate(&models.Mahasiswa{}, &models.Course{}); err != nil {
+	if err := db.AutoMigrate(&models.Mahasiswa{}, &models.Course{}, &models.KRS{}, &models.Nilai{}, &models.Jadwal{}, &models.Dosen{}, &models.Absensi{}, &models.Materi{}); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
 
