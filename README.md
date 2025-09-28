@@ -205,20 +205,13 @@ curl -X POST http://localhost:8080/mahasiswa \
 
 ---
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
 
 ## 👨‍💻 Author
 
-**Rasya** - [GitHub Profile](https://github.com/rasya)
+**Rasya** - [GitHub Profile](https://github.com/rasyagtps)
 
 ---
 
 ## 📞 Support
 
 Jika Anda mengalami masalah atau memiliki pertanyaan, silakan buat issue di repository ini.
-
-Happy Coding! 🎉

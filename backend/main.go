@@ -2,8 +2,11 @@ package main
 
 import (
 	"SIAku/config"
+	"SIAku/middleware"
 	"SIAku/models"
+	"SIAku/routes"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,44 +21,30 @@ func main() {
 		log.Fatalf("Database connection failed: %v", err)
 	}
 
-	if err := db.AutoMigrate(&models.Mahasiswa{}); err != nil {
+	if err := db.AutoMigrate(&models.Mahasiswa{}, &models.Course{}); err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
-	r := gin.Default()
 
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "SIAku API running ✅",
-		})
-	})
+	if os.Getenv("GIN_MODE") == "" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
-	r.GET("/mahasiswa", func(c *gin.Context) {
-		var mhs []models.Mahasiswa
-		if err := db.Find(&mhs).Error; err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(200, mhs)
-	})
+	r := gin.New()
 
-	r.POST("/mahasiswa", func(c *gin.Context) {
-		var input models.Mahasiswa
-		if err := c.ShouldBindJSON(&input); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
-		if err := db.Create(&input).Error; err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(201, input)
-	})
+	r.Use(middleware.Logger())
+	r.Use(middleware.Recovery())
+	r.Use(middleware.CORS())
+
+	routes.SetupRoutes(r)
 
 	port := config.AppConfig.ServerPort
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("Server running on :%s", port)
+
+	log.Printf("🚀 Server running on :%s", port)
+	log.Printf("📋 Environment: %s", gin.Mode())
+
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
