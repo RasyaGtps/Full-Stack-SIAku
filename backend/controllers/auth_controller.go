@@ -6,6 +6,7 @@ import (
 	"SIAku/models"
 	"SIAku/utils"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -57,15 +58,16 @@ func (ac *AuthController) Register(c *gin.Context) {
 
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()
-		if err.Error() == `pq: duplicate key value violates unique constraint "users_username_key"` {
-			utils.ErrorResponse(c, http.StatusConflict, "Username already exists")
+		errorMsg := err.Error()
+		if strings.Contains(errorMsg, "username") || strings.Contains(errorMsg, "uni_users_username") {
+			utils.ErrorResponse(c, http.StatusConflict, "Username sudah terdaftar, silakan gunakan username yang lain")
 			return
 		}
-		if err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"` {
-			utils.ErrorResponse(c, http.StatusConflict, "Email already exists")
+		if strings.Contains(errorMsg, "email") || strings.Contains(errorMsg, "uni_users_email") {
+			utils.ErrorResponse(c, http.StatusConflict, "Email sudah terdaftar, silakan gunakan email yang lain")
 			return
 		}
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create user")
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat akun, silakan coba lagi")
 		return
 	}
 
@@ -99,11 +101,12 @@ func (ac *AuthController) Register(c *gin.Context) {
 
 		if err := tx.Create(&mahasiswa).Error; err != nil {
 			tx.Rollback()
-			if err.Error() == `pq: duplicate key value violates unique constraint "mahasiswas_nim_key"` {
-				utils.ErrorResponse(c, http.StatusConflict, "NIM already exists")
+			errorMsg := err.Error()
+			if strings.Contains(errorMsg, "nim") {
+				utils.ErrorResponse(c, http.StatusConflict, "NIM sudah terdaftar, silakan gunakan NIM yang lain")
 				return
 			}
-			utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create mahasiswa")
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat data mahasiswa")
 			return
 		}
 
@@ -124,11 +127,12 @@ func (ac *AuthController) Register(c *gin.Context) {
 
 		if err := tx.Create(&dosen).Error; err != nil {
 			tx.Rollback()
-			if err.Error() == `pq: duplicate key value violates unique constraint "dosens_nidn_key"` {
-				utils.ErrorResponse(c, http.StatusConflict, "NIDN already exists")
+			errorMsg := err.Error()
+			if strings.Contains(errorMsg, "nidn") {
+				utils.ErrorResponse(c, http.StatusConflict, "NIDN sudah terdaftar, silakan gunakan NIDN yang lain")
 				return
 			}
-			utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create dosen")
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat data dosen")
 			return
 		}
 
@@ -149,11 +153,12 @@ func (ac *AuthController) Register(c *gin.Context) {
 
 		if err := tx.Create(&kajur).Error; err != nil {
 			tx.Rollback()
-			if err.Error() == `pq: duplicate key value violates unique constraint "kajurs_nidn_key"` {
-				utils.ErrorResponse(c, http.StatusConflict, "NIDN already exists")
+			errorMsg := err.Error()
+			if strings.Contains(errorMsg, "nidn") {
+				utils.ErrorResponse(c, http.StatusConflict, "NIDN sudah terdaftar sebagai kajur, silakan gunakan NIDN yang lain")
 				return
 			}
-			utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create kajur")
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat data kajur")
 			return
 		}
 
@@ -173,11 +178,12 @@ func (ac *AuthController) Register(c *gin.Context) {
 
 		if err := tx.Create(&rektor).Error; err != nil {
 			tx.Rollback()
-			if err.Error() == `pq: duplicate key value violates unique constraint "rektors_nidn_key"` {
-				utils.ErrorResponse(c, http.StatusConflict, "NIDN already exists")
+			errorMsg := err.Error()
+			if strings.Contains(errorMsg, "nidn") {
+				utils.ErrorResponse(c, http.StatusConflict, "NIDN sudah terdaftar sebagai rektor, silakan gunakan NIDN yang lain")
 				return
 			}
-			utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create rektor")
+			utils.ErrorResponse(c, http.StatusInternalServerError, "Gagal membuat data rektor")
 			return
 		}
 	}
