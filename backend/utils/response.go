@@ -2,6 +2,7 @@ package utils
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -74,4 +75,26 @@ func ErrorResponse(c *gin.Context, statusCode int, message string) {
 		"success": false,
 		"error":   message,
 	})
+}
+
+// GetPageParam gets page parameter from query string
+func GetPageParam(c *gin.Context) int {
+	page := 1
+	if p := c.Query("page"); p != "" {
+		if val, err := strconv.Atoi(p); err == nil && val > 0 {
+			page = val
+		}
+	}
+	return page
+}
+
+// GetLimitParam gets limit parameter from query string
+func GetLimitParam(c *gin.Context) int {
+	limit := 10
+	if l := c.Query("limit"); l != "" {
+		if val, err := strconv.Atoi(l); err == nil && val > 0 && val <= 100 {
+			limit = val
+		}
+	}
+	return limit
 }

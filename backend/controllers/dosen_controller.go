@@ -96,6 +96,8 @@ func (dc *DosenController) InputNilai(c *gin.Context) {
 		}
 	}
 
+	// Notification removed - WhatsApp integration disabled
+
 	utils.SuccessResponse(c, gin.H{
 		"message": "Grade successfully inputted",
 		"nilai": gin.H{
@@ -203,6 +205,8 @@ func (dc *DosenController) ProcessKRSApproval(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to process KRS approval")
 		return
 	}
+
+	// Notification removed - WhatsApp integration disabled
 
 	utils.SuccessResponse(c, gin.H{
 		"message": "KRS " + req.Action + "d successfully",

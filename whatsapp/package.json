@@ -1,0 +1,28 @@
+{
+  "name": "siaku-whatsapp-service",
+  "version": "1.0.0",
+  "description": "WhatsApp Service untuk SIAku menggunakan Baileys",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "clear": "node clear-session.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "baileys",
+    "siaku"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0",
+    "jimp": "^0.22.10",
+    "pino": "^10.0.0",
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.34.4",
+    "whatsapp-web.js": "^1.34.1"
+  }
+}

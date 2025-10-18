@@ -94,6 +94,7 @@ func (ac *AuthController) Register(c *gin.Context) {
 			NIM:            req.NIM,
 			Nama:           req.Nama,
 			Jurusan:        req.Jurusan,
+			PhoneNumber:    req.PhoneNumber,
 			StatusAkademik: statusAkademik,
 			Semester:       semester,
 			IPK:            0.00,
@@ -118,11 +119,12 @@ func (ac *AuthController) Register(c *gin.Context) {
 		}
 
 		dosen := models.Dosen{
-			NIDN:    req.NIDN,
-			Nama:    req.Nama,
-			Email:   req.Email,
-			Jurusan: req.Jurusan,
-			Status:  "aktif",
+			NIDN:        req.NIDN,
+			Nama:        req.Nama,
+			Email:       req.Email,
+			PhoneNumber: req.PhoneNumber,
+			Jurusan:     req.Jurusan,
+			Status:      "aktif",
 		}
 
 		if err := tx.Create(&dosen).Error; err != nil {

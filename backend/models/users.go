@@ -25,6 +25,7 @@ type UserRegistrationRequest struct {
 	// Detail fields based on role
 	NIM            string `json:"nim,omitempty" validate:"omitempty,min=8,max=20"`      // For mahasiswa
 	NIDN           string `json:"nidn,omitempty" validate:"omitempty,min=8,max=20"`     // For dosen, kajur, rektor
+	PhoneNumber    string `json:"phone_number,omitempty" validate:"omitempty,min=10,max=15"` // For all roles
 	Jurusan        string `json:"jurusan,omitempty" validate:"omitempty,min=2,max=100"` // For mahasiswa, dosen, kajur
 	Semester       int    `json:"semester,omitempty"`                                   // For mahasiswa
 	StatusAkademik string `json:"status_akademik,omitempty"`                            // For mahasiswa

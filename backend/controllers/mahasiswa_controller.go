@@ -85,6 +85,31 @@ func (mc *MahasiswaController) GetMahasiswaByID(c *gin.Context) {
 	utils.SuccessResponse(c, response)
 }
 
+func (mc *MahasiswaController) GetMahasiswaByNIM(c *gin.Context) {
+	nim := c.Param("nim")
+
+	var mahasiswa models.Mahasiswa
+	if err := config.DB.Preload("Courses").Where("nim = ?", nim).First(&mahasiswa).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Mahasiswa dengan NIM "+nim+" tidak ditemukan")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"id":              mahasiswa.ID,
+			"nim":             mahasiswa.NIM,
+			"nama":            mahasiswa.Nama,
+			"jurusan":         mahasiswa.Jurusan,
+			"phone_number":    mahasiswa.PhoneNumber,
+			"status_akademik": mahasiswa.StatusAkademik,
+			"semester":        mahasiswa.Semester,
+			"ipk":             mahasiswa.IPK,
+			"total_courses":   len(mahasiswa.Courses),
+		},
+	})
+}
+
 func (mc *MahasiswaController) UpdateMahasiswa(c *gin.Context) {
 	id := c.Param("id")
 	userID, _ := c.Get("user_id")

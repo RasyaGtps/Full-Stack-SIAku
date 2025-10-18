@@ -16,13 +16,14 @@ import (
 
 // Config struct untuk simpan env
 type Config struct {
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	JWTSecret  string
-	ServerPort string
+	DBHost              string
+	DBPort              string
+	DBUser              string
+	DBPassword          string
+	DBName              string
+	JWTSecret           string
+	ServerPort          string
+	WhatsAppServiceURL  string
 }
 
 var AppConfig Config
@@ -36,13 +37,14 @@ func LoadConfig() error {
 	}
 
 	AppConfig = Config{
-		DBHost:     os.Getenv("DB_HOST"),
-		DBPort:     os.Getenv("DB_PORT"),
-		DBUser:     os.Getenv("DB_USER"),
-		DBPassword: os.Getenv("DB_PASSWORD"),
-		DBName:     os.Getenv("DB_NAME"),
-		JWTSecret:  os.Getenv("JWT_SECRET"),
-		ServerPort: os.Getenv("SERVER_PORT"),
+		DBHost:             os.Getenv("DB_HOST"),
+		DBPort:             os.Getenv("DB_PORT"),
+		DBUser:             os.Getenv("DB_USER"),
+		DBPassword:         os.Getenv("DB_PASSWORD"),
+		DBName:             os.Getenv("DB_NAME"),
+		JWTSecret:          os.Getenv("JWT_SECRET"),
+		ServerPort:         os.Getenv("SERVER_PORT"),
+		WhatsAppServiceURL: os.Getenv("WHATSAPP_SERVICE_URL"),
 	}
 	return nil
 }

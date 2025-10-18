@@ -5,6 +5,7 @@ import (
 	"SIAku/middleware"
 	"SIAku/models"
 	"SIAku/routes"
+	"SIAku/utils"
 	"log"
 	"os"
 
@@ -51,6 +52,9 @@ func main() {
 
 	log.Printf("🚀 Server running on :%s", port)
 	log.Printf("📋 Environment: %s", gin.Mode())
+	
+	// Check WhatsApp Bot Service status
+	utils.CheckWhatsAppService()
 
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
