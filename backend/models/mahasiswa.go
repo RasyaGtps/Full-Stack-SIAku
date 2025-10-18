@@ -4,6 +4,7 @@ import "time"
 
 type Mahasiswa struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
+	UserID         *uint     `gorm:"index" json:"user_id,omitempty"`
 	NIM            string    `gorm:"unique;not null" json:"nim" validate:"required,min=8,max=20"`
 	Nama           string    `gorm:"type:varchar(100);not null" json:"nama" validate:"required,min=2,max=100"`
 	Jurusan        string    `gorm:"type:varchar(100)" json:"jurusan" validate:"required,min=2,max=100"`

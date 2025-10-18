@@ -110,6 +110,95 @@ func (mc *MahasiswaController) GetMahasiswaByNIM(c *gin.Context) {
 	})
 }
 
+func (mc *MahasiswaController) BindPhoneNumber(c *gin.Context) {
+	var req struct {
+		NIM         string `json:"nim" validate:"required"`
+		PhoneNumber string `json:"phone_number" validate:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid JSON format")
+		return
+	}
+
+	if err := utils.ValidateStruct(req); err != nil {
+		utils.HandleValidationError(c, err)
+		return
+	}
+
+	var mahasiswa models.Mahasiswa
+	if err := config.DB.Where("nim = ?", req.NIM).First(&mahasiswa).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Mahasiswa dengan NIM "+req.NIM+" tidak ditemukan")
+		return
+	}
+
+	// Check if phone already bound to another account
+	if mahasiswa.PhoneNumber != "" && mahasiswa.PhoneNumber != req.PhoneNumber {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "Akun ini sudah terikat dengan nomor lain. Silakan logout dari device lama terlebih dahulu.",
+		})
+		return
+	}
+
+	// Check if this phone is already bound to another NIM
+	var existingMahasiswa models.Mahasiswa
+	if err := config.DB.Where("phone_number = ? AND nim != ?", req.PhoneNumber, req.NIM).First(&existingMahasiswa).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "Nomor ini sudah terikat dengan akun lain (NIM: " + existingMahasiswa.NIM + ")",
+		})
+		return
+	}
+
+	// Bind phone number (only update phone_number field)
+	if err := config.DB.Model(&mahasiswa).Update("phone_number", req.PhoneNumber).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to bind phone number")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Phone number berhasil terikat",
+		"data": gin.H{
+			"nim":          mahasiswa.NIM,
+			"phone_number": mahasiswa.PhoneNumber,
+		},
+	})
+}
+
+func (mc *MahasiswaController) UnbindPhoneNumber(c *gin.Context) {
+	var req struct {
+		NIM string `json:"nim" validate:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid JSON format")
+		return
+	}
+
+	var mahasiswa models.Mahasiswa
+	if err := config.DB.Where("nim = ?", req.NIM).First(&mahasiswa).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Mahasiswa dengan NIM "+req.NIM+" tidak ditemukan")
+		return
+	}
+
+	// Clear phone number (only update phone_number field)
+	if err := config.DB.Model(&mahasiswa).Update("phone_number", "").Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to unbind phone number")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Phone number berhasil di-unbind",
+		"data": gin.H{
+			"nim":          mahasiswa.NIM,
+			"phone_number": nil,
+		},
+	})
+}
+
 func (mc *MahasiswaController) UpdateMahasiswa(c *gin.Context) {
 	id := c.Param("id")
 	userID, _ := c.Get("user_id")

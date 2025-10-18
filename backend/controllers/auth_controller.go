@@ -91,6 +91,7 @@ func (ac *AuthController) Register(c *gin.Context) {
 		}
 
 		mahasiswa := models.Mahasiswa{
+			UserID:         &user.ID,
 			NIM:            req.NIM,
 			Nama:           req.Nama,
 			Jurusan:        req.Jurusan,
@@ -230,57 +231,12 @@ func (ac *AuthController) Login(c *gin.Context) {
 
 	var user models.Users
 
-	// Try to find user by username or email first
+	// Find user by username or email
 	err := config.DB.Where("username = ? OR email = ?", req.Identifier, req.Identifier).First(&user).Error
 
 	if err != nil {
-		// If not found by username/email, try to find by NIM/NIDN in role tables
-		var foundUserEmail string
-
-		// Check mahasiswa table by NIM
-		var mahasiswa models.Mahasiswa
-		if err := config.DB.Where("nim = ?", req.Identifier).First(&mahasiswa).Error; err == nil {
-			// Try to find user with same nama or email pattern
-			if err := config.DB.Where("username = ? OR email LIKE ?", mahasiswa.Nama, "%"+mahasiswa.Nama+"%").First(&user).Error; err == nil {
-				foundUserEmail = user.Email
-			}
-		}
-
-		// If still not found, check dosen table by NIDN
-		if foundUserEmail == "" {
-			var dosen models.Dosen
-			if err := config.DB.Where("n_id_n = ?", req.Identifier).First(&dosen).Error; err == nil {
-				if err := config.DB.Where("email = ?", dosen.Email).First(&user).Error; err == nil {
-					foundUserEmail = user.Email
-				}
-			}
-		}
-
-		// If still not found, check kajur table by NIDN
-		if foundUserEmail == "" {
-			var kajur models.Kajur
-			if err := config.DB.Where("n_id_n = ?", req.Identifier).First(&kajur).Error; err == nil {
-				if err := config.DB.Where("email = ?", kajur.Email).First(&user).Error; err == nil {
-					foundUserEmail = user.Email
-				}
-			}
-		}
-
-		// If still not found, check rektor table by NIDN
-		if foundUserEmail == "" {
-			var rektor models.Rektor
-			if err := config.DB.Where("n_id_n = ?", req.Identifier).First(&rektor).Error; err == nil {
-				if err := config.DB.Where("email = ?", rektor.Email).First(&user).Error; err == nil {
-					foundUserEmail = user.Email
-				}
-			}
-		}
-
-		// If still no user found
-		if foundUserEmail == "" {
-			utils.ErrorResponse(c, http.StatusUnauthorized, "Akun tidak ditemukan. Periksa username/email/NIM/NIDN Anda")
-			return
-		}
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Username atau email tidak ditemukan")
+		return
 	}
 
 	// Verify password
@@ -341,25 +297,25 @@ func (ac *AuthController) buildUserResponse(user models.Users) models.UserRespon
 	switch user.Role {
 	case "mahasiswa":
 		var mahasiswa models.Mahasiswa
-		if err := config.DB.Where("nama = ?", user.Username).Or("nim = ?", user.Username).First(&mahasiswa).Error; err == nil {
+		if err := config.DB.Where("user_id = ?", user.ID).First(&mahasiswa).Error; err == nil {
 			response.RoleData = mahasiswa
 		}
 
 	case "dosen":
 		var dosen models.Dosen
-		if err := config.DB.Where("email = ?", user.Email).Or("nidn = ?", user.Username).First(&dosen).Error; err == nil {
+		if err := config.DB.Where("email = ?", user.Email).First(&dosen).Error; err == nil {
 			response.RoleData = dosen
 		}
 
 	case "kajur":
 		var kajur models.Kajur
-		if err := config.DB.Where("email = ?", user.Email).Or("nidn = ?", user.Username).First(&kajur).Error; err == nil {
+		if err := config.DB.Where("email = ?", user.Email).First(&kajur).Error; err == nil {
 			response.RoleData = kajur
 		}
 
 	case "rektor":
 		var rektor models.Rektor
-		if err := config.DB.Where("email = ?", user.Email).Or("nidn = ?", user.Username).First(&rektor).Error; err == nil {
+		if err := config.DB.Where("email = ?", user.Email).First(&rektor).Error; err == nil {
 			response.RoleData = rektor
 		}
 	}

@@ -37,6 +37,8 @@ func SetupRoutes(r *gin.Engine) {
 
 		// Public endpoint for WhatsApp bot
 		api.GET("/mahasiswa/nim/:nim", mahasiswaController.GetMahasiswaByNIM)
+		api.POST("/mahasiswa/bind-phone", mahasiswaController.BindPhoneNumber)
+		api.POST("/mahasiswa/unbind-phone", mahasiswaController.UnbindPhoneNumber)
 
 		protected := api.Group("/")
 		protected.Use(middleware.ValidateJWT())

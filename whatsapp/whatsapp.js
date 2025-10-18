@@ -14,6 +14,7 @@ let botInfo = {
 const owners = new Set();
 const blockedUsers = new Set();
 const pendingVerification = new Map();
+const userSessions = new Map(); // Store logged in users: phoneNumber -> {nim, nama, token, role}
 
 async function initWhatsApp() {
     console.log('🔧 Initializing WhatsApp Client...\n');
@@ -163,9 +164,22 @@ async function handleCommand(msg, phoneNumber, message) {
         case '/infobot':
             if (isOwner(phoneNumber)) await handleInfoBot(msg);
             break;
+        case '/login':
+            if (args[1] && args[2]) {
+                await handleLogin(msg, phoneNumber, args[1], args[2]);
+            } else {
+                await msg.reply('❌ Format: /login [username] [password]\n\nContoh: /login 1234567890 password123');
+            }
+            break;
+        case '/logout':
+            await handleLogout(msg, phoneNumber);
+            break;
+        case '/profile':
+            await handleProfile(msg, phoneNumber);
+            break;
         case '/nim':
             if (args[1]) {
-                await handleCheckNIM(msg, args[1]);
+                await handleCheckNIM(msg, phoneNumber, args[1]);
             } else {
                 await msg.reply('❌ Format: /nim [nomor_nim]\n\nContoh: /nim 1234567890');
             }
@@ -389,8 +403,201 @@ async function handleInfoBot(msg) {
     await msg.reply(info);
 }
 
-// Check Mahasiswa by NIM
-async function handleCheckNIM(msg, nim) {
+// Login Handler
+async function handleLogin(msg, phoneNumber, username, password) {
+    try {
+        // Check if user already logged in
+        if (userSessions.has(phoneNumber)) {
+            const session = userSessions.get(phoneNumber);
+            await msg.reply(
+                '✅ *KAMU SUDAH LOGIN!*\n\n' +
+                `👤 Nama: ${session.nama}\n` +
+                `📌 Username: ${session.username}\n` +
+                `👔 Role: ${session.role}\n` +
+                `🕐 Login sejak: ${session.loginAt.toLocaleString('id-ID')}\n\n` +
+                '💡 *Tips:*\n' +
+                '• Gunakan /profile untuk lihat profil\n' +
+                '• Gunakan /logout jika ingin ganti akun\n\n' +
+                '_Tidak perlu login lagi_ ✨'
+            );
+            return;
+        }
+
+        await msg.reply('🔐 Sedang melakukan login...');
+
+        const backendURL = process.env.BACKEND_URL || 'http://localhost:8080';
+        const response = await axios.post(`${backendURL}/api/auth/login`, {
+            identifier: username,
+            password: password
+        });
+
+        if (response.data.success && response.data.token) {
+            const userData = response.data.data; // Backend returns 'data' not 'user'
+            const roleData = userData.role_data || {};
+            
+            // Extract NIM/NIDN and Nama based on role
+            let identifier = userData.username;
+            let nama = userData.username;
+            
+            if (userData.role === 'mahasiswa' && roleData.nim) {
+                identifier = roleData.nim;
+                nama = roleData.nama || userData.username;
+                
+                // 🔒 SECURITY CHECK: Detect login from different phone number
+                const registeredPhone = roleData.phone_number;
+                if (registeredPhone && registeredPhone !== '' && registeredPhone !== phoneNumber) {
+                    // Ada phone number yang sudah terdaftar dan berbeda dengan yang login sekarang
+                    console.log(`⚠️ SECURITY ALERT: Login attempt from different phone`);
+                    console.log(`   Account: ${nama} (${identifier})`);
+                    console.log(`   Registered Phone: ${registeredPhone}`);
+                    console.log(`   Login Attempt From: ${phoneNumber}`);
+                    
+                    // Kirim notifikasi keamanan ke pemilik akun
+                    await sendSecurityAlert(registeredPhone, {
+                        nama: nama,
+                        nim: identifier,
+                        attemptFrom: phoneNumber,
+                        timestamp: new Date()
+                    });
+                    
+                    // Tolak login attempt
+                    await msg.reply(
+                        '🚫 *AKSES DITOLAK!*\n\n' +
+                        '⚠️ Akun ini sudah terikat dengan nomor WhatsApp lain.\n\n' +
+                        '🔔 Pemilik akun telah menerima notifikasi tentang percobaan login ini.\n\n' +
+                        '💡 *Jika ini akun Anda:*\n' +
+                        '1. Logout dari device lama terlebih dahulu\n' +
+                        '2. Atau hubungi admin untuk reset\n\n' +
+                        '🔐 *Untuk keamanan:*\n' +
+                        'Satu akun hanya bisa login di satu nomor WhatsApp.'
+                    );
+                    return;
+                }
+                
+                // Check phone binding for mahasiswa
+                try {
+                    const bindResponse = await axios.post(`${backendURL}/api/mahasiswa/bind-phone`, {
+                        nim: identifier,
+                        phone_number: phoneNumber
+                    });
+                    
+                    if (!bindResponse.data.success) {
+                        await msg.reply(`❌ *Login Gagal!*\n\n${bindResponse.data.message}`);
+                        return;
+                    }
+                } catch (bindError) {
+                    if (bindError.response && bindError.response.status === 409) {
+                        await msg.reply(`❌ *Login Gagal!*\n\n${bindError.response.data.message}`);
+                        return;
+                    }
+                    throw bindError; // Re-throw other errors
+                }
+            } else if (['dosen', 'kajur', 'rektor'].includes(userData.role) && roleData.nidn) {
+                identifier = roleData.nidn;
+                nama = roleData.nama || userData.username;
+            }
+            
+            // Store session
+            userSessions.set(phoneNumber, {
+                username: userData.username,
+                identifier: identifier,
+                nama: nama,
+                role: userData.role,
+                token: response.data.token,
+                loginAt: new Date()
+            });
+
+            let text = '✅ *LOGIN BERHASIL!*\n\n';
+            text += `👤 Nama: ${nama}\n`;
+            text += `📌 Username: ${userData.username}\n`;
+            if (userData.role === 'mahasiswa') {
+                text += `📝 NIM: ${identifier}\n`;
+            } else if (['dosen', 'kajur', 'rektor'].includes(userData.role)) {
+                text += `📝 NIDN: ${identifier}\n`;
+            }
+            text += `👔 Role: ${userData.role}\n`;
+            text += `📱 Nomor: ${phoneNumber}\n\n`;
+            text += `Sekarang kamu bisa menggunakan:\n`;
+            text += `• /nim [nomor] - Cek data mahasiswa\n`;
+            text += `• /profile - Lihat profil\n`;
+            text += `• /logout - Keluar`;
+
+            await msg.reply(text);
+            console.log(`✅ User logged in: ${nama} (${phoneNumber})`);
+            saveData(); // Save session
+        }
+    } catch (error) {
+        if (error.response && error.response.status === 401) {
+            await msg.reply('❌ *Login Gagal!*\n\nUsername atau password salah.\nSilakan coba lagi.');
+        } else {
+            console.error('Login error:', error.message);
+            await msg.reply('❌ Terjadi kesalahan saat login.\n\nSilakan coba lagi nanti.');
+        }
+    }
+}
+
+// Logout Handler
+async function handleLogout(msg, phoneNumber) {
+    if (!userSessions.has(phoneNumber)) {
+        await msg.reply('❌ Kamu belum login!\n\nGunakan /login untuk masuk.');
+        return;
+    }
+
+    const session = userSessions.get(phoneNumber);
+    
+    // Unbind phone number for mahasiswa
+    if (session.role === 'mahasiswa') {
+        try {
+            const backendURL = process.env.BACKEND_URL || 'http://localhost:8080';
+            await axios.post(`${backendURL}/api/mahasiswa/unbind-phone`, {
+                nim: session.identifier
+            });
+            console.log(`📱 Phone unbound for NIM: ${session.identifier}`);
+        } catch (error) {
+            console.error('Error unbinding phone:', error.message);
+            // Continue with logout even if unbind fails
+        }
+    }
+    
+    userSessions.delete(phoneNumber);
+    saveData(); // Save data after logout
+
+    await msg.reply(`👋 *Logout Berhasil!*\n\nSampai jumpa, ${session.nama}!\n\n📱 Nomor WA kamu telah dilepas dari akun.\n\nGunakan /login untuk masuk kembali.`);
+    console.log(`👋 User logged out: ${session.nama} (${phoneNumber})`);
+}
+
+// Profile Handler
+async function handleProfile(msg, phoneNumber) {
+    if (!userSessions.has(phoneNumber)) {
+        await msg.reply('❌ Kamu belum login!\n\nGunakan /login untuk masuk terlebih dahulu.');
+        return;
+    }
+
+    const session = userSessions.get(phoneNumber);
+    
+    let text = '👤 *PROFIL SAYA*\n\n';
+    text += `👨‍🎓 Nama: ${session.nama}\n`;
+    text += `📌 Username: ${session.username}\n`;
+    if (session.role === 'mahasiswa') {
+        text += `📝 NIM: ${session.identifier}\n`;
+    } else if (['dosen', 'kajur', 'rektor'].includes(session.role)) {
+        text += `📝 NIDN: ${session.identifier}\n`;
+    }
+    text += `👔 Role: ${session.role}\n`;
+    text += `🕐 Login: ${session.loginAt.toLocaleString('id-ID')}\n\n`;
+    text += `_Gunakan /logout untuk keluar_`;
+
+    await msg.reply(text);
+}
+
+// Check Mahasiswa by NIM (Requires Login)
+async function handleCheckNIM(msg, phoneNumber, nim) {
+    // Check if user is logged in
+    if (!userSessions.has(phoneNumber)) {
+        await msg.reply('🔒 *Akses Ditolak!*\n\n❌ Kamu harus login terlebih dahulu.\n\nGunakan: /login [username] [password]');
+        return;
+    }
+
     try {
         await msg.reply(`🔍 Mencari data mahasiswa dengan NIM: *${nim}*...`);
 
@@ -424,13 +631,24 @@ async function handleCheckNIM(msg, nim) {
 }
 
 async function handleMenu(msg, phoneNumber) {
+    const isLoggedIn = userSessions.has(phoneNumber);
+    
     let text = '📋 *MENU BOT*\n\n';
     text += '*Commands Umum:*\n';
     text += '/menu - Tampilkan menu\n';
     text += '/help - Bantuan\n';
-    text += '/nim [nomor] - Cek data mahasiswa\n';
     text += '/jadiowner - Jadi owner bot\n';
     text += '/cekowner - Cek status owner\n\n';
+    
+    if (!isLoggedIn) {
+        text += '*🔐 Authentication:*\n';
+        text += '/login [username] [password] - Login ke sistem\n\n';
+    } else {
+        text += '*👤 User Commands:*\n';
+        text += '/profile - Lihat profil\n';
+        text += '/nim [nomor] - Cek data mahasiswa (🔒)\n';
+        text += '/logout - Logout dari sistem\n\n';
+    }
 
     if (isOwner(phoneNumber)) {
         text += '*Commands Owner:*\n';
@@ -465,6 +683,51 @@ async function sendMessage(phone, text) {
     }
 }
 
+// 🔒 Security Alert Function
+async function sendSecurityAlert(ownerPhone, alertData) {
+    try {
+        const { nama, nim, attemptFrom, timestamp } = alertData;
+        
+        // Format phone number (remove leading 0 if exists, add country code)
+        let formattedPhone = ownerPhone;
+        if (formattedPhone.startsWith('0')) {
+            formattedPhone = '62' + formattedPhone.substring(1);
+        }
+        
+        const alertMessage = 
+            '🚨 *PERINGATAN KEAMANAN*\n\n' +
+            '⚠️ Terdeteksi percobaan login ke akun Anda!\n\n' +
+            '📋 *Detail Akun:*\n' +
+            `👤 Nama: ${nama}\n` +
+            `📝 NIM: ${nim}\n\n` +
+            '🔍 *Detail Percobaan Login:*\n' +
+            `📱 Nomor Asing: ${attemptFrom}\n` +
+            `🕐 Waktu: ${timestamp.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n\n` +
+            '✅ *Status: Login Ditolak*\n\n' +
+            '🔐 *Yang Harus Dilakukan:*\n' +
+            '1. Jika bukan Anda, abaikan pesan ini\n' +
+            '2. Segera ganti password jika mencurigakan\n' +
+            '3. Jangan share username & password\n\n' +
+            '💡 Jika ini Anda yang ingin login:\n' +
+            '• Logout dari device lama: /logout\n' +
+            '• Baru login dari device baru\n\n' +
+            '_Pesan otomatis dari sistem keamanan SIAku_';
+        
+        const sent = await sendMessage(formattedPhone, alertMessage);
+        
+        if (sent) {
+            console.log(`✅ Security alert sent to ${formattedPhone}`);
+        } else {
+            console.log(`⚠️ Failed to send security alert to ${formattedPhone}`);
+        }
+        
+        return sent;
+    } catch (error) {
+        console.error('Error sending security alert:', error);
+        return false;
+    }
+}
+
 function getConnectionState() {
     return isReady ? 'connected' : 'disconnected';
 }
@@ -485,7 +748,16 @@ function getClient() {
 function saveData() {
     const data = {
         owners: Array.from(owners),
-        blocked: Array.from(blockedUsers)
+        blocked: Array.from(blockedUsers),
+        sessions: Array.from(userSessions.entries()).map(([phone, session]) => ({
+            phone,
+            username: session.username,
+            identifier: session.identifier,
+            nama: session.nama,
+            role: session.role,
+            token: session.token,
+            loginAt: session.loginAt
+        }))
     };
     fs.writeFileSync('data.json', JSON.stringify(data, null, 2));
 }
@@ -496,11 +768,24 @@ function loadData() {
             const data = JSON.parse(fs.readFileSync('data.json', 'utf8'));
             owners.clear();
             blockedUsers.clear();
+            userSessions.clear();
 
             if (data.owners) data.owners.forEach(o => owners.add(o));
             if (data.blocked) data.blocked.forEach(b => blockedUsers.add(b));
+            if (data.sessions) {
+                data.sessions.forEach(s => {
+                    userSessions.set(s.phone, {
+                        username: s.username,
+                        identifier: s.identifier,
+                        nama: s.nama,
+                        role: s.role,
+                        token: s.token,
+                        loginAt: new Date(s.loginAt)
+                    });
+                });
+            }
 
-            console.log(`📂 Loaded ${owners.size} owners and ${blockedUsers.size} blocked users`);
+            console.log(`📂 Loaded ${owners.size} owners, ${blockedUsers.size} blocked users, ${userSessions.size} active sessions`);
         }
     } catch (error) {
         console.error('Error loading data:', error);
